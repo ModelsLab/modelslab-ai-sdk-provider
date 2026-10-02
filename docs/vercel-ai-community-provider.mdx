@@ -1,0 +1,127 @@
+---
+title: ModelsLab
+description: ModelsLab provider for the AI SDK.
+---
+
+{/*
+  Draft for a PR to vercel/ai, to be added as
+  content/providers/05-community-providers/56-modelslab.mdx
+  (pick the next free number prefix at PR time).
+
+  DO NOT open the vercel/ai PR until `@modelslab/ai-sdk-provider` is
+  published on npm (`npm publish --access public`). The docs link to the
+  npm package and reviewers check that it installs.
+
+  Delete this comment block before submitting.
+*/}
+
+# ModelsLab Provider
+
+[ModelsLab](https://modelslab.com) is an AI API platform for image, video, audio, 3D and LLM generation, with access to more than 10,000 models (Flux, Stable Diffusion XL, Imagen, Midjourney-style community checkpoints and more) through one API key.
+
+The [ModelsLab provider](https://github.com/ModelsLab/modelslab-ai-sdk-provider) for the AI SDK adds image generation through the ModelsLab v7 text-to-image API:
+
+- **Model variety**: Use any ModelsLab image model by its `model_id`.
+- **Queued generations handled for you**: Long-running generations are polled until the images are ready.
+- **Provider options**: Pass ModelsLab-specific request fields when you need more control.
+
+## Setup
+
+The ModelsLab provider is available in the `@modelslab/ai-sdk-provider` module. You can install it with:
+
+<InstallPackages packages="@modelslab/ai-sdk-provider" />
+
+## Provider Instance
+
+You can import the default provider instance `modelslab` from `@modelslab/ai-sdk-provider`:
+
+```ts
+import { modelslab } from '@modelslab/ai-sdk-provider';
+```
+
+If you need a customized setup, use `createModelsLab`:
+
+```ts
+import { createModelsLab } from '@modelslab/ai-sdk-provider';
+
+const modelslab = createModelsLab({
+  apiKey: process.env.MODELSLAB_API_KEY, // default
+});
+```
+
+You can use the following optional settings to customize the ModelsLab provider instance:
+
+- **apiKey** _string_
+
+  API key that is sent in the request body as `key`.
+  It defaults to the `MODELSLAB_API_KEY` environment variable.
+  Create a key in the [ModelsLab dashboard](https://modelslab.com/dashboard/api-keys). API access requires a paid plan ([pricing](https://modelslab.com/pricing)).
+
+- **baseURL** _string_
+
+  Base URL for the API calls. The default is `https://modelslab.com/api/v7`.
+
+- **headers** _Record&lt;string,string&gt;_
+
+  Custom headers to include in the requests.
+
+- **fetch** _(input: RequestInfo, init?: RequestInit) => Promise&lt;Response&gt;_
+
+  Custom [fetch](https://developer.mozilla.org/en-US/docs/Web/API/fetch) implementation.
+
+## Image Models
+
+You can create ModelsLab image models using the `.image()` factory method.
+The model ID is any ModelsLab image `model_id`, for example `flux`, `sdxl`, `imagen-4`
+(browse all models at [modelslab.com/models](https://modelslab.com/models)).
+
+```ts
+import { modelslab } from '@modelslab/ai-sdk-provider';
+import { generateImage } from 'ai';
+
+const { image } = await generateImage({
+  model: modelslab.image('flux'),
+  prompt: 'A red apple on a white table, studio lighting',
+  size: '1024x1024',
+});
+```
+
+The model accepts `n` (up to 4 images per call; the AI SDK splits larger requests),
+`size` (sent as `width` / `height`) and `aspectRatio` (sent as `aspect_ratio`).
+`seed` is not supported by the v7 endpoint and produces a warning.
+
+### Provider Options
+
+```ts
+const { images } = await generateImage({
+  model: modelslab.image('flux'),
+  prompt: 'A lighthouse at dusk',
+  n: 2,
+  providerOptions: {
+    modelslab: {
+      track_id: 'order-123',
+      pollIntervalMillis: 2000,
+      pollTimeoutMillis: 300000,
+    },
+  },
+});
+```
+
+| Option               | Type     | Default  | Description                                                     |
+| -------------------- | -------- | -------- | --------------------------------------------------------------- |
+| `pollIntervalMillis` | `number` | `2000`   | Interval between fetch polls when a generation is queued.       |
+| `pollTimeoutMillis`  | `number` | `300000` | Maximum time to wait for a queued generation.                   |
+| `width` / `height`   | `number` | —        | Explicit dimensions; override `size`.                           |
+| `size`               | `string` | —        | Model-specific size string (for example for GPT Image models).  |
+| `track_id`           | `string` | —        | Your own correlation ID, returned in webhooks.                  |
+| `webhook`            | `string` | —        | URL that ModelsLab calls when the generation completes.         |
+
+Other fields are passed to the API unchanged.
+The generated image URLs and the ModelsLab request ID are returned in
+`providerMetadata.modelslab`.
+
+## Additional Resources
+
+- [ModelsLab Provider Repository](https://github.com/ModelsLab/modelslab-ai-sdk-provider)
+- [ModelsLab API Documentation](https://docs.modelslab.com)
+- [ModelsLab Models](https://modelslab.com/models)
